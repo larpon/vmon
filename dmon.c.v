@@ -114,14 +114,6 @@ fn c_action_to_v(c_action C.dmon_action) Action {
 
 [manualfree]
 fn c_watch_callback_wrap(watch_id C.dmon_watch_id, action C.dmon_action, rootdir charptr, filepath charptr, oldfilepath charptr, user &WatchCallBackWrap) {
-	//d := &WatchCallBackWrap(user)
-	//cast := &WatchCallBackWrap(user)
-	/*shared d := WatchCallBackWrap{
-		user_data: user.user_data
-		callback: user.callback
-		path: user.path
-	}*/
-	//shared d := user
 	d := user
 
 	unsafe {
@@ -161,13 +153,6 @@ fn c_watch_callback_wrap(watch_id C.dmon_watch_id, action C.dmon_action, rootdir
 			}
 			base_msg.free()
 		}
-
-		/*
-		if !os.is_dir(rp) {
-			eprintln('"$rp" is no more')
-			return
-		}
-		*/
 
 		d.mutex.@lock()
 		d.callback(watch_id.id, c_action_to_v(action), rp, fp, ofp, d.user_data)
