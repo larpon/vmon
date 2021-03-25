@@ -95,19 +95,6 @@ fn done_interrupt() {
 }
 
 fn c_action_to_v(c_action C.dmon_action) Action {
-	vaction := int(c_action)
-	//:= vmon.Action.move
-	if vaction == C.DMON_ACTION_CREATE {
-		return vmon.Action.create
-	} else if vaction == C.DMON_ACTION_DELETE {
-		return vmon.Action.delete
-	} else if vaction == C.DMON_ACTION_MODIFY {
-		return vmon.Action.modify
-	} else {
-		return vmon.Action.move
-	}
-
-	/* Doesn't work?
 	return match int(c_action) {
 		C.DMON_ACTION_CREATE {
 			vmon.Action.create
@@ -122,7 +109,7 @@ fn c_action_to_v(c_action C.dmon_action) Action {
 		else {
 			vmon.Action.move
 		}
-	}*/
+	}
 }
 
 [manualfree]
