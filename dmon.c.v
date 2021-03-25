@@ -1,0 +1,266 @@
+// Copyright(C) 2021 Lars Pontoppidan. All rights reserved.
+
+module vmon
+
+import os
+import sync
+import c
+
+const (
+	used_import = c.used_import
+	ctx         = &Context(0) // Sorry - I could find no other way - this is C interop :(
+)
+
+pub enum WatchFlag {
+	recursive = 0x1 // monitor all child directories
+	follow_symlinks = 0x2 // resolve symlinks (linux only)
+	// outofscope_links = 0x4     // TODO not implemented in dmon C yet
+	// ignore_directories = 0x8
+}
+
+pub enum Action {
+	create = 1
+	delete
+	modify
+	move
+}
+
+type FnWatchCallback = fn (watch_id WatchID, action Action, root_path string, file_path string, old_file_path string, user_data voidptr)
+
+// fn watch_cb(watch_id C.dmon_watch_id, action C.dmon_action, rootdir charptr, filepath charptr, oldfilepath charptr, user voidptr) { }
+// voidptr(watch_cb)
+
+struct Context {
+mut:
+	cb_wrappers []&WatchCallBackWrap
+	freed       bool
+}
+
+struct WatchCallBackWrap {
+	callback  FnWatchCallback
+	path      string
+mut:
+	mutex     &sync.Mutex
+//pub mut:
+	user_data voidptr
+}
+
+pub type WatchID = u32
+
+fn init() {
+	dbg(@MOD, @FN, '')
+	ctx_oof := &Context{}
+
+	// TODO Sorry - I have no other choice
+	unsafe {
+		x := &ctx
+		*x = ctx_oof
+	}
+	C.dmon_init()
+
+	C.atexit(done)
+	// TODO for all os.signal(C.SIGXXX,done) ?
+	//$if debug ? {
+	os.signal(C.SIGINT, done_interrupt)
+	//}
+}
+
+[manualfree; unsafe]
+fn done() {
+	mut ctx_ptr := ctx
+	if !isnil(ctx_ptr) && !ctx_ptr.freed {
+		dbg(@MOD, @FN, '')
+		dbg(@MOD, @FN, 'freeing resources')
+		C.dmon_deinit()
+		unsafe {
+			for i := 0; i < ctx_ptr.cb_wrappers.len; i++ {
+				free(ctx_ptr.cb_wrappers[i])
+			}
+		}
+		ctx_ptr.cb_wrappers.clear()
+		ctx_ptr.freed = true
+		unsafe {
+			free(ctx_ptr)
+			ctx_ptr = voidptr(0)
+		}
+	}
+}
+
+fn done_interrupt() {
+	dbg(@MOD, @FN, '')
+	unsafe {
+		done()
+	}
+	exit(1)
+}
+
+fn c_action_to_v(c_action C.dmon_action) Action {
+	vaction := int(c_action)
+	//:= vmon.Action.move
+	if vaction == C.DMON_ACTION_CREATE {
+		return vmon.Action.create
+	} else if vaction == C.DMON_ACTION_DELETE {
+		return vmon.Action.delete
+	} else if vaction == C.DMON_ACTION_MODIFY {
+		return vmon.Action.modify
+	} else {
+		return vmon.Action.move
+	}
+
+	/* Doesn't work?
+	return match int(c_action) {
+		C.DMON_ACTION_CREATE {
+			vmon.Action.create
+		}
+		C.DMON_ACTION_DELETE {
+			vmon.Action.delete
+		}
+		C.DMON_ACTION_MODIFY {
+			vmon.Action.modify
+		}
+		// C.DMON_ACTION_MOVE
+		else {
+			vmon.Action.move
+		}
+	}*/
+}
+
+[manualfree]
+fn c_watch_callback_wrap(watch_id C.dmon_watch_id, action C.dmon_action, rootdir charptr, filepath charptr, oldfilepath charptr, user &WatchCallBackWrap) {
+	//d := &WatchCallBackWrap(user)
+	//cast := &WatchCallBackWrap(user)
+	/*shared d := WatchCallBackWrap{
+		user_data: user.user_data
+		callback: user.callback
+		path: user.path
+	}*/
+	//shared d := user
+	d := user
+
+	unsafe {
+		fp := ''
+		rp := ''
+		ofp := ''
+		if !isnil(filepath) {
+			fp = filepath.vstring().clone() // tos_clone(byteptr(filepath))
+		}
+		if !isnil(rootdir) {
+			rp = rootdir.vstring().clone() // tos_clone(byteptr(rootdir))
+		}
+		if !isnil(oldfilepath) {
+			ofp = oldfilepath.vstring().clone() // tos_clone(byteptr(oldfilepath))
+		}
+
+		$if debug ? {
+			watchid := watch_id.id
+			vaction := c_action_to_v(action)
+			base_msg := 'filesystem event in "$rp" id: $watchid  "$vaction"'
+			match int(action) {
+				1 {
+					dbg(@MOD, @FN, '$base_msg "$fp"')
+				}
+				2 {
+					dbg(@MOD, @FN, '$base_msg "$fp"')
+				}
+				3 {
+					dbg(@MOD, @FN, '$base_msg "$fp"')
+				}
+				4 {
+					dbg(@MOD, @FN, '$base_msg "$ofp" to "$fp"')
+				}
+				else {
+					dbg(@MOD, @FN, '$base_msg ouch "$ofp" to "$fp"')
+				}
+			}
+			base_msg.free()
+		}
+
+		/*
+		if !os.is_dir(rp) {
+			eprintln('"$rp" is no more')
+			return
+		}
+		*/
+
+		d.mutex.@lock()
+		d.callback(watch_id.id, c_action_to_v(action), rp, fp, ofp, d.user_data)
+		d.mutex.unlock()
+
+		if !isnil(filepath) {
+			fp.free()
+		}
+		if !isnil(rootdir) {
+			rp.free()
+		}
+		if !isnil(oldfilepath) {
+			ofp.free()
+		}
+	}
+}
+
+//          Watch for directories
+//          You can watch multiple directories by calling this function multiple times
+//              rootdir: root directory to monitor
+//              watch_cb: callback function to receive events.
+//                        NOTE that this function is called from another thread, so you should
+//                        beware of data races in your application when accessing data within this
+//                        callback
+//              flags: watch flags, see dmon_watch_flags_t
+//              user_data: user pointer that is passed to callback function
+//          Returns the Id of the watched directory after successful call, or returns Id=0 if error
+
+// watch watches `path` directory for changes and calls `watch_cb` when a file event occurs.
+// Please note that watching occurs in another system thread
+// so please guard your `user_data` accordingly.
+pub fn watch(path string, watch_cb FnWatchCallback, flags u32, user_data voidptr) ?WatchID {
+	dbg(@MOD, @FN, 'watching "$path"')
+
+	if !os.is_dir(path) {
+		return error(@MOD + '.' + @FN + ': "$path" is not a valid directory')
+	}
+
+	watch_cb_wrap := &WatchCallBackWrap{
+		path: path
+		mutex: sync.new_mutex()
+		user_data: user_data
+		callback: watch_cb
+	}
+
+	mut ctx_ptr := ctx
+	if !isnil(ctx_ptr) {
+		ctx_ptr.cb_wrappers << watch_cb_wrap
+	}
+
+	wid := C.dmon_watch(path.str, c_watch_callback_wrap, flags, watch_cb_wrap).id
+
+	if wid == 0 {
+		return error(@MOD + '.' + @FN + ': an error occurred while setting up watching for "$path"')
+	}
+	return wid
+}
+
+pub fn unwatch(id WatchID) {
+	//dbg(@MOD, @FN, 'unwatching "$id"') // Good for crash debugging
+	mut ctx_ptr := ctx
+	if !isnil(ctx_ptr) {
+		wid := int(id) - 1
+		mut cbw := ctx_ptr.cb_wrappers[wid]
+		dbg(@MOD, @FN, 'unwatching id $id ("$cbw.path")')
+		unsafe {
+			free(cbw.mutex)
+		}
+		ctx_ptr.cb_wrappers.delete(wid)
+		unsafe {
+			free(cbw)
+		}
+	}
+	C.dmon_unwatch(C.dmon_watch_id{ id: u32(id) })
+}
+
+// fn watch_cb(watch_id C.dmon_watch_id, action C.dmon_action, rootdir charptr, filepath charptr, oldfilepath charptr, user voidptr) { }
+// voidptr(watch_cb)
+
+[if debug]
+fn dbg(mod string, fnc string, msg string) {
+	println(mod + '.' + fnc + if msg == '' { '' } else { ': ' + msg })
+}
