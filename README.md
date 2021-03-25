@@ -4,7 +4,7 @@ A V wrapper for [septag/dmon](https://github.com/septag/dmon) - an asynchronous 
 
 Currently `vmon` offers a few additional features over the code in `dmon`.
 
-* Shared access to the user data in the callback thread
+* Automatic shared access to the user data in the callback thread (via `sync.Mutex`)
 * Automatic init/free of memory resources on clean program exits
 
 # Install
@@ -19,7 +19,6 @@ v run ~/.vmodules/vmon/examples/watch_and_unwatch
 To watch a directory asynchronous for *file* changes simply do:
 ```v
 import os
-
 import vmon
 
 fn watch_callback(watch_id vmon.WatchID, action vmon.Action, root_path string, file_path string, old_file_path string, user_data voidptr) {
