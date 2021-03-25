@@ -37,11 +37,10 @@ mut:
 }
 
 struct WatchCallBackWrap {
-	callback  FnWatchCallback
-	path      string
+	callback FnWatchCallback
+	path     string
 mut:
-	mutex     &sync.Mutex
-//pub mut:
+	mutex &sync.Mutex
 	user_data voidptr
 }
 
@@ -155,7 +154,14 @@ fn c_watch_callback_wrap(watch_id C.dmon_watch_id, action C.dmon_action, rootdir
 		}
 
 		d.mutex.@lock()
+
+		// lock d {
+		// cb := d.callback
 		d.callback(watch_id.id, c_action_to_v(action), rp, fp, ofp, d.user_data)
+		// cb(watch_id.id, c_action_to_v(action), rp, fp, ofp, d.user_data)
+		// cb(d.user_data)
+		//}
+
 		d.mutex.unlock()
 
 		if !isnil(filepath) {
@@ -212,21 +218,25 @@ pub fn watch(path string, watch_cb FnWatchCallback, flags u32, user_data voidptr
 }
 
 pub fn unwatch(id WatchID) {
-	//dbg(@MOD, @FN, 'unwatching "$id"') // Good for crash debugging
+	// dbg(@MOD, @FN, 'unwatching "$id"') // Good for crash debugging
 	mut ctx_ptr := ctx
+	C.dmon_unwatch(C.dmon_watch_id{ id: u32(id) })
 	if !isnil(ctx_ptr) {
 		wid := int(id) - 1
 		mut cbw := ctx_ptr.cb_wrappers[wid]
 		dbg(@MOD, @FN, 'unwatching id $id ("$cbw.path")')
+		ctx_ptr.cb_wrappers.delete(wid)
+		// Wear a life-belt
+		cbw.mutex.@lock()
+		cbw.user_data = voidptr(0)
+		cbw.mutex.unlock()
 		unsafe {
 			free(cbw.mutex)
 		}
-		ctx_ptr.cb_wrappers.delete(wid)
 		unsafe {
 			free(cbw)
 		}
 	}
-	C.dmon_unwatch(C.dmon_watch_id{ id: u32(id) })
 }
 
 // fn watch_cb(watch_id C.dmon_watch_id, action C.dmon_action, rootdir charptr, filepath charptr, oldfilepath charptr, user voidptr) { }

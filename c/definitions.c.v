@@ -17,16 +17,16 @@ pub const (
 
 // C definitions
 
-//typedef struct { uint32_t id; } dmon_watch_id;
+// typedef struct { uint32_t id; } dmon_watch_id;
 [typedef]
 struct C.dmon_watch_id {
 	id u32
 }
 
-//void dmon_init(void);
+// void dmon_init(void);
 fn C.dmon_init()
 
-//void dmon_deinit(void);
+// void dmon_deinit(void);
 fn C.dmon_deinit()
 
 /*
