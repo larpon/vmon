@@ -36,9 +36,13 @@ fn main() {
 
 # Notes
 
-Please note that [septag/dmon](https://github.com/septag/dmon) is [licensed](https://github.com/septag/dmon#license-bsd-2-clause) under BSD 2-clause - while the V wrapper code is licensed under MIT.
+Please note that [septag/dmon](https://github.com/septag/dmon) is [licensed](https://github.com/septag/dmon#license-bsd-2-clause) under BSD 2-clause
+- while the V wrapper code is licensed under MIT.
 
 Please also note that your user need correct file permission access
 to the directories you're trying to watch. So watching a place
 like `/tmp` on Unix isn't always possible since this is usually owned by root.
 However, you're usually allowed to make subdirectories in `/tmp` which can be watched.
+
+Also please note that currently you won't receive events from changes to *directories* in the
+watched path since this is not supported in the C project we rely on.
