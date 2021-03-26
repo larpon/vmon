@@ -18,7 +18,7 @@ v run ~/.vmodules/vmon/examples/watch_and_unwatch
 
 # Usage
 
-To watch a directory asynchronous for *file* changes simply do:
+To watch a directory asynchronously for *file* changes simply do:
 ```v
 import os
 import vmon
