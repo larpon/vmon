@@ -1,6 +1,8 @@
 # vmon
 
-A V wrapper for [septag/dmon](https://github.com/septag/dmon) - an asynchronous directory file change watcher for Windows, macOS and Linux.
+A V module for asynchronously watching for file changes in a directory.
+The module is essentially a wrapper for [septag/dmon](https://github.com/septag/dmon).
+It works for Windows, macOS and Linux.
 
 Currently `vmon` offers a few additional features over the code in `dmon`.
 
