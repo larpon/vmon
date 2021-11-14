@@ -36,11 +36,12 @@ mut:
 	freed       bool
 }
 
+[heap]
 struct WatchCallBackWrap {
 	callback FnWatchCallback
 	path     string
 mut:
-	mutex &sync.Mutex
+	mutex     &sync.Mutex
 	user_data voidptr
 }
 
@@ -60,7 +61,7 @@ fn init() {
 	C.atexit(done)
 	// TODO for all os.signal(C.SIGXXX,done) ?
 	//$if debug ? {
-	os.signal(C.SIGINT, done_interrupt)
+	os.signal_opt(.int, done_interrupt) or { return }
 	//}
 }
 
@@ -85,7 +86,7 @@ fn done() {
 	}
 }
 
-fn done_interrupt() {
+fn done_interrupt(_ os.Signal) {
 	dbg(@MOD, @FN, '')
 	unsafe {
 		done()

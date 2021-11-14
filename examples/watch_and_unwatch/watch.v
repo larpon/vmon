@@ -57,7 +57,8 @@ fn main() {
 
 	// os.rm(path_src) or { panic(err) }
 
-	(os.create(path_src) or { panic(err) }).close()
+	mut f := os.create(path_src) or { panic(err) }
+	f.close()
 	time.sleep(25 * time.millisecond)
 
 	// TODO new dirs goes unnoticed in the C code
@@ -65,7 +66,8 @@ fn main() {
 
 	// println(os.ls(path) or { []string{} })
 
-	(os.create(fpath_src) or { panic(err) }).close()
+	f = os.create(fpath_src) or { panic(err) }
+	f.close()
 	time.sleep(25 * time.millisecond)
 
 	os.mv(fpath_src, fpath_dst) or { panic(err) }
@@ -83,14 +85,16 @@ fn main() {
 	os.mkdir(path_src) or { panic(err) }
 	// time.sleep(25 * time.millisecond)
 	// println('os.create( $path_src + test )')
-	(os.create(os.join_path(path_src, 'test')) or { panic(err) }).close()
+	f = os.create(os.join_path(path_src, 'test')) or { panic(err) }
+	f.close()
 	time.sleep(25 * time.millisecond)
 
 	os.mkdir_all(path3) or {}
 	path3_watch_id := vmon.watch(path3, watch_callback, flags, voidptr(0)) or { panic(err) }
 	time.sleep(25 * time.millisecond)
 
-	(os.create(os.join_path(path3, 'test')) or { panic(err) }).close()
+	f = os.create(os.join_path(path3, 'test')) or { panic(err) }
+	f.close()
 	time.sleep(25 * time.millisecond)
 
 	vmon.unwatch(path3_watch_id)
