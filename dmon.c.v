@@ -1,4 +1,4 @@
-// Copyright(C) 2021 Lars Pontoppidan. All rights reserved.
+// Copyright(C) 2021-2022 Lars Pontoppidan. All rights reserved.
 
 module vmon
 
@@ -53,7 +53,7 @@ fn init() {
 
 	// TODO Sorry - I have no other choice
 	unsafe {
-		x := &ctx
+		x := &vmon.ctx
 		*x = ctx_oof
 	}
 	C.dmon_init()
@@ -67,7 +67,7 @@ fn init() {
 
 [manualfree; unsafe]
 fn done() {
-	mut ctx_ptr := ctx
+	mut ctx_ptr := unsafe { vmon.ctx }
 	if !isnil(ctx_ptr) && !ctx_ptr.freed {
 		dbg(@MOD, @FN, '')
 		dbg(@MOD, @FN, 'freeing resources')
@@ -81,7 +81,7 @@ fn done() {
 		ctx_ptr.freed = true
 		unsafe {
 			free(ctx_ptr)
-			ctx_ptr = voidptr(0)
+			ctx_ptr = nil
 		}
 	}
 }
@@ -113,7 +113,7 @@ fn c_action_to_v(c_action C.dmon_action) Action {
 }
 
 [manualfree]
-fn c_watch_callback_wrap(watch_id C.dmon_watch_id, action C.dmon_action, rootdir charptr, filepath charptr, oldfilepath charptr, user &WatchCallBackWrap) {
+fn c_watch_callback_wrap(watch_id c.WatchID, action C.dmon_action, rootdir charptr, filepath charptr, oldfilepath charptr, user &WatchCallBackWrap) {
 	d := user
 
 	unsafe {
@@ -205,7 +205,7 @@ pub fn watch(path string, watch_cb FnWatchCallback, flags u32, user_data voidptr
 		callback: watch_cb
 	}
 
-	mut ctx_ptr := ctx
+	mut ctx_ptr := unsafe { vmon.ctx }
 	if !isnil(ctx_ptr) {
 		ctx_ptr.cb_wrappers << watch_cb_wrap
 	}
@@ -220,8 +220,8 @@ pub fn watch(path string, watch_cb FnWatchCallback, flags u32, user_data voidptr
 
 pub fn unwatch(id WatchID) {
 	// dbg(@MOD, @FN, 'unwatching "$id"') // Good for crash debugging
-	mut ctx_ptr := ctx
-	C.dmon_unwatch(C.dmon_watch_id{ id: u32(id) })
+	mut ctx_ptr := unsafe { vmon.ctx }
+	C.dmon_unwatch(c.WatchID{ id: u32(id) })
 	if !isnil(ctx_ptr) {
 		wid := int(id) - 1
 		mut cbw := ctx_ptr.cb_wrappers[wid]
@@ -229,7 +229,7 @@ pub fn unwatch(id WatchID) {
 		ctx_ptr.cb_wrappers.delete(wid)
 		// Wear a life-belt
 		cbw.mutex.@lock()
-		cbw.user_data = voidptr(0)
+		cbw.user_data = unsafe { nil }
 		cbw.mutex.unlock()
 		unsafe {
 			free(cbw.mutex)

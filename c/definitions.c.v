@@ -1,4 +1,4 @@
-// Copyright(C) 2021 Lars Pontoppidan. All rights reserved.
+// Copyright(C) 2021-2022 Lars Pontoppidan. All rights reserved.
 module c
 
 // https://github.com/septag/dmon @ 57dc7bf
@@ -20,14 +20,27 @@ pub const (
 // typedef struct { uint32_t id; } dmon_watch_id;
 [typedef]
 struct C.dmon_watch_id {
+pub:
 	id u32
 }
+
+pub type WatchID = C.dmon_watch_id
 
 // void dmon_init(void);
 fn C.dmon_init()
 
+pub fn doinit() {
+	C.dmon_init()
+}
+
 // void dmon_deinit(void);
 fn C.dmon_deinit()
+
+pub fn deinit() {
+	C.dmon_deinit()
+}
+
+// TODO pub type WatchFn = fn (watch_id WatchID, dmon_action action, const_rootdir &char, const_filepath &char, const_oldfilepath &char, user voidptr)
 
 /*
 dmon_watch_id dmon_watch(const char* rootdir,
@@ -36,10 +49,12 @@ dmon_watch_id dmon_watch(const char* rootdir,
                                           const char* oldfilepath, void* user),
                          uint32_t flags, void* user_data);
 */
-fn C.dmon_watch(rootdir charptr, watch_cb voidptr, flags u32, user_data voidptr) C.dmon_watch_id
+pub fn C.dmon_watch(rootdir charptr, watch_cb voidptr, flags u32, user_data voidptr) C.dmon_watch_id
+
+// TODO pub fn watch(root_dir string, watch_cb WatchFn)
 
 // void dmon_unwatch(dmon_watch_id id);
-fn C.dmon_unwatch(id C.dmon_watch_id)
+pub fn C.dmon_unwatch(id C.dmon_watch_id)
 
 /*
 typedef enum dmon_watch_flags_t {

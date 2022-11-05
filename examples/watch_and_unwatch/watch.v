@@ -1,4 +1,4 @@
-// Copyright(C) 2021 Lars Pontoppidan. All rights reserved.
+// Copyright(C) 2021-2022 Lars Pontoppidan. All rights reserved.
 import vmon
 import os
 import time
@@ -90,7 +90,7 @@ fn main() {
 	time.sleep(25 * time.millisecond)
 
 	os.mkdir_all(path3) or {}
-	path3_watch_id := vmon.watch(path3, watch_callback, flags, voidptr(0)) or { panic(err) }
+	path3_watch_id := vmon.watch(path3, watch_callback, flags, unsafe { nil }) or { panic(err) }
 	time.sleep(25 * time.millisecond)
 
 	f = os.create(os.join_path(path3, 'test')) or { panic(err) }
@@ -102,7 +102,7 @@ fn main() {
 	// This produces a panic since the dir doesn't exist when the thread finally calls the callback
 	// vmon.watch(os.join_path(path3,'test'), watch_callback, flags, voidptr(0)) or { panic(err) }
 
-	vmon.watch(path3, watch_callback, flags, voidptr(0)) or { panic(err) }
+	vmon.watch(path3, watch_callback, flags, unsafe { nil }) or { panic(err) }
 
 	os.rmdir_all(path3_base) or { panic(err) }
 
