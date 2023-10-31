@@ -205,7 +205,7 @@ pub fn watch(path string, watch_cb FnWatchCallback, flags u32, user_data voidptr
 }
 
 pub fn unwatch(id WatchID) {
-	// dbg(@MOD, @FN, 'unwatching "$id"') // Good for crash debugging
+	dbg(@MOD, @FN, 'unwatching "${id}"') // Good for crash debugging
 	mut ctx_ptr := unsafe { vmon.ctx }
 	C.dmon_unwatch(c.WatchID{ id: u32(id) })
 	if !isnil(ctx_ptr) {

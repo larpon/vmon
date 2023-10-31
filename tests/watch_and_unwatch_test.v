@@ -35,7 +35,7 @@ mut:
 	i int
 }
 
-fn main() {
+fn test_watch_and_unwatch() {
 	flags := u32(vmon.WatchFlag.recursive) | u32(vmon.WatchFlag.follow_symlinks)
 
 	mut ts := &TestStruct{}
