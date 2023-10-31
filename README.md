@@ -13,10 +13,15 @@ Currently `vmon` offers a few additional features over the code in `dmon`.
 
 ```bash
 git clone https://github.com/Larpon/vmon ~/.vmodules/vmon
-v run ~/.vmodules/vmon/examples/watch_and_unwatch
 ```
 
 # Usage
+
+For example usage see `examples/watch_and_wait`
+
+```v
+v run ~/.vmodules/vmon/examples/watch_and_wait
+```
 
 To watch a directory asynchronously for *file* changes simply do:
 ```v
@@ -29,10 +34,12 @@ fn watch_callback(watch_id vmon.WatchID, action vmon.Action, root_path string, f
 
 fn main() {
 	vmon.watch(os.home_dir(), watch_callback, 0, voidptr(0)) or { panic(err) }
-	// ... do stuff here
+	// ... do stuff here, wait or block the main thread, e.g.:
 	time.sleep(10 * time.second)
 }
 ```
+
+Since the file watching is running in it's own thread remember to block your main thread while watching for changes, otherwise the app will exit immediately.
 
 # Notes
 
