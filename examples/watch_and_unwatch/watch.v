@@ -8,24 +8,24 @@ fn watch_callback(watch_id vmon.WatchID, action vmon.Action, root_path string, f
 	// This is only needed since we use the same
 	// watch_callback for multiple watchers
 	if !isnil(user_data) {
-		mut ts := &TestStruct(user_data)
+		mut ts := unsafe { &TestStruct(user_data) }
 		ts.i++
-		println('$ts'.replace('\n', ' ').replace('    ', '')) // flatten output
+		println('${ts}'.replace('\n', ' ').replace('    ', '')) // flatten output
 	}
 
-	base_msg := 'Watcher id $watch_id in "$root_path" got $action event'
+	base_msg := 'Watcher id ${watch_id} in "${root_path}" got ${action} event'
 	match action {
 		.create {
-			println('$base_msg "$file_path"')
+			println('${base_msg} "${file_path}"')
 		}
 		.delete {
-			println('$base_msg "$file_path"')
+			println('${base_msg} "${file_path}"')
 		}
 		.modify {
-			println('$base_msg "$file_path"')
+			println('${base_msg} "${file_path}"')
 		}
 		.move {
-			println('$base_msg "$old_file_path" to "$file_path"')
+			println('${base_msg} "${old_file_path}" to "${file_path}"')
 		}
 	}
 }

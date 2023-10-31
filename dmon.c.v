@@ -8,21 +8,22 @@ import c
 
 const (
 	used_import = c.used_import
-	ctx         = &Context(0) // Sorry - I could find no other way - this is C interop :(
+	ctx         = &Context(unsafe { nil }) // Sorry - I could find no other way - this is C interop :(
 )
 
 pub enum WatchFlag {
-	recursive = 0x1 // monitor all child directories
-	follow_symlinks = 0x2 // resolve symlinks (linux only)
-	// outofscope_links = 0x4     // TODO not implemented in dmon C yet
-	// ignore_directories = 0x8
+	recursive       = C.DMON_WATCHFLAGS_RECURSIVE // 0x1, monitor all child directories
+	follow_symlinks = C.DMON_WATCHFLAGS_FOLLOW_SYMLINKS // 0x2, resolve symlinks (linux only)
+	// outofscope_links = C.DMON_WATCHFLAGS_OUTOFSCOPE_LINKS // 0x4, TODO not implemented in dmon C yet
+	// ignore_directories = C.DMON_WATCHFLAGS_IGNORE_DIRECTORIES // 0x8, TODO not implemented in dmon C yet
 }
 
+// Action is c.dmon_action
 pub enum Action {
-	create = 1
-	delete
-	modify
-	move
+	create = C.DMON_ACTION_CREATE // = 1,
+	delete = C.DMON_ACTION_DELETE
+	modify = C.DMON_ACTION_MODIFY
+	move   = C.DMON_ACTION_MOVE
 }
 
 type FnWatchCallback = fn (watch_id WatchID, action Action, root_path string, file_path string, old_file_path string, user_data voidptr)
@@ -38,7 +39,7 @@ mut:
 
 [heap]
 struct WatchCallBackWrap {
-	callback FnWatchCallback
+	callback ?FnWatchCallback
 	path     string
 mut:
 	mutex     &sync.Mutex
@@ -94,26 +95,8 @@ fn done_interrupt(_ os.Signal) {
 	exit(1)
 }
 
-fn c_action_to_v(c_action C.dmon_action) Action {
-	return match int(c_action) {
-		C.DMON_ACTION_CREATE {
-			vmon.Action.create
-		}
-		C.DMON_ACTION_DELETE {
-			vmon.Action.delete
-		}
-		C.DMON_ACTION_MODIFY {
-			vmon.Action.modify
-		}
-		// C.DMON_ACTION_MOVE
-		else {
-			vmon.Action.move
-		}
-	}
-}
-
 [manualfree]
-fn c_watch_callback_wrap(watch_id c.WatchID, action C.dmon_action, rootdir charptr, filepath charptr, oldfilepath charptr, user &WatchCallBackWrap) {
+fn c_watch_callback_wrap(watch_id c.WatchID, action Action, rootdir charptr, filepath charptr, oldfilepath charptr, user &WatchCallBackWrap) {
 	d := user
 
 	unsafe {
@@ -132,23 +115,23 @@ fn c_watch_callback_wrap(watch_id c.WatchID, action C.dmon_action, rootdir charp
 
 		$if debug ? {
 			watchid := watch_id.id
-			vaction := c_action_to_v(action)
-			base_msg := 'filesystem event in "$rp" id: $watchid  "$vaction"'
+			vaction := action
+			base_msg := 'filesystem event in "${rp}" id: ${watchid}  "${vaction}"'
 			match int(action) {
 				1 {
-					dbg(@MOD, @FN, '$base_msg "$fp"')
+					dbg(@MOD, @FN, '${base_msg} "${fp}"')
 				}
 				2 {
-					dbg(@MOD, @FN, '$base_msg "$fp"')
+					dbg(@MOD, @FN, '${base_msg} "${fp}"')
 				}
 				3 {
-					dbg(@MOD, @FN, '$base_msg "$fp"')
+					dbg(@MOD, @FN, '${base_msg} "${fp}"')
 				}
 				4 {
-					dbg(@MOD, @FN, '$base_msg "$ofp" to "$fp"')
+					dbg(@MOD, @FN, '${base_msg} "${ofp}" to "${fp}"')
 				}
 				else {
-					dbg(@MOD, @FN, '$base_msg ouch "$ofp" to "$fp"')
+					dbg(@MOD, @FN, '${base_msg} ouch "${ofp}" to "${fp}"')
 				}
 			}
 			base_msg.free()
@@ -158,7 +141,9 @@ fn c_watch_callback_wrap(watch_id c.WatchID, action C.dmon_action, rootdir charp
 
 		// lock d {
 		// cb := d.callback
-		d.callback(watch_id.id, c_action_to_v(action), rp, fp, ofp, d.user_data)
+		if callback := d.callback {
+			callback(watch_id.id, action, rp, fp, ofp, d.user_data)
+		}
 		// cb(watch_id.id, c_action_to_v(action), rp, fp, ofp, d.user_data)
 		// cb(d.user_data)
 		//}
@@ -191,11 +176,11 @@ fn c_watch_callback_wrap(watch_id c.WatchID, action C.dmon_action, rootdir charp
 // watch watches `path` directory for changes and calls `watch_cb` when a file event occurs.
 // Please note that watching occurs in another system thread
 // so please guard your `user_data` accordingly.
-pub fn watch(path string, watch_cb FnWatchCallback, flags u32, user_data voidptr) ?WatchID {
-	dbg(@MOD, @FN, 'watching "$path"')
+pub fn watch(path string, watch_cb FnWatchCallback, flags u32, user_data voidptr) !WatchID {
+	dbg(@MOD, @FN, 'watching "${path}"')
 
 	if !os.is_dir(path) {
-		return error(@MOD + '.' + @FN + ': "$path" is not a valid directory')
+		return error(@MOD + '.' + @FN + ': "${path}" is not a valid directory')
 	}
 
 	watch_cb_wrap := &WatchCallBackWrap{
@@ -213,7 +198,8 @@ pub fn watch(path string, watch_cb FnWatchCallback, flags u32, user_data voidptr
 	wid := C.dmon_watch(path.str, c_watch_callback_wrap, flags, watch_cb_wrap).id
 
 	if wid == 0 {
-		return error(@MOD + '.' + @FN + ': an error occurred while setting up watching for "$path"')
+		return error(@MOD + '.' + @FN +
+			': an error occurred while setting up watching for "${path}"')
 	}
 	return wid
 }
@@ -225,7 +211,7 @@ pub fn unwatch(id WatchID) {
 	if !isnil(ctx_ptr) {
 		wid := int(id) - 1
 		mut cbw := ctx_ptr.cb_wrappers[wid]
-		dbg(@MOD, @FN, 'unwatching id $id ("$cbw.path")')
+		dbg(@MOD, @FN, 'unwatching id ${id} ("${cbw.path}")')
 		ctx_ptr.cb_wrappers.delete(wid)
 		// Wear a life-belt
 		cbw.mutex.@lock()
