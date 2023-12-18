@@ -3,9 +3,7 @@ module c
 
 // https://github.com/septag/dmon @ 57dc7bf
 
-pub const (
-	used_import = 1 // TODO
-)
+pub const used_import = 1 // TODO
 
 #flag -I @VROOT/dmon
 #flag darwin -framework CoreServices -framework CoreFoundation
@@ -18,7 +16,7 @@ pub const (
 // C definitions
 
 // typedef struct { uint32_t id; } dmon_watch_id;
-[typedef]
+@[typedef]
 struct C.dmon_watch_id {
 pub:
 	id u32
