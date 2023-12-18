@@ -6,10 +6,8 @@ import os
 import sync
 import c
 
-const (
-	used_import = c.used_import
-	ctx         = &Context(unsafe { nil }) // Sorry - I could find no other way - this is C interop :(
-)
+const used_import = c.used_import
+const ctx = &Context(unsafe { nil }) // Sorry - I could find no other way - this is C interop :(
 
 pub enum WatchFlag {
 	recursive       = C.DMON_WATCHFLAGS_RECURSIVE // 0x1, monitor all child directories
@@ -37,7 +35,7 @@ mut:
 	freed       bool
 }
 
-[heap]
+@[heap]
 struct WatchCallBackWrap {
 	callback ?FnWatchCallback
 	path     string
@@ -66,7 +64,7 @@ fn init() {
 	//}
 }
 
-[manualfree; unsafe]
+@[manualfree; unsafe]
 fn done() {
 	mut ctx_ptr := unsafe { vmon.ctx }
 	if !isnil(ctx_ptr) && !ctx_ptr.freed {
@@ -95,7 +93,7 @@ fn done_interrupt(_ os.Signal) {
 	exit(1)
 }
 
-[manualfree]
+@[manualfree]
 fn c_watch_callback_wrap(watch_id c.WatchID, action Action, rootdir charptr, filepath charptr, oldfilepath charptr, user &WatchCallBackWrap) {
 	d := user
 
@@ -229,7 +227,7 @@ pub fn unwatch(id WatchID) {
 // fn watch_cb(watch_id C.dmon_watch_id, action C.dmon_action, rootdir charptr, filepath charptr, oldfilepath charptr, user voidptr) { }
 // voidptr(watch_cb)
 
-[if debug]
+@[if debug]
 fn dbg(mod string, fnc string, msg string) {
 	println(mod + '.' + fnc + if msg == '' { '' } else { ': ' + msg })
 }
