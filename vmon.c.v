@@ -1,5 +1,5 @@
 // Copyright(C) 2021-2022 Lars Pontoppidan. All rights reserved.
-module c
+module vmon
 
 // https://github.com/septag/dmon @ 57dc7bf
 
