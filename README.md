@@ -12,7 +12,7 @@ Currently `vmon` offers a few additional features over the code in `dmon`.
 # Install
 
 ```bash
-git clone https://github.com/Larpon/vmon ~/.vmodules/vmon
+v install https://github.com/Larpon/vmon
 ```
 
 # Usage
