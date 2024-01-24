@@ -1,0 +1,3 @@
+[submodule "dmon"]
+	path = dmon
+	url = https://github.com/septag/dmon.git
