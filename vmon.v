@@ -4,9 +4,7 @@ module vmon
 
 import os
 import sync
-import c
 
-const used_import = c.used_import
 const ctx = &Context(unsafe { nil }) // Sorry - I could find no other way - this is C interop :(
 
 pub enum WatchFlag {
@@ -94,7 +92,7 @@ fn done_interrupt(_ os.Signal) {
 }
 
 @[manualfree]
-fn c_watch_callback_wrap(watch_id c.WatchID, action Action, rootdir charptr, filepath charptr, oldfilepath charptr, user &WatchCallBackWrap) {
+fn c_watch_callback_wrap(watch_id C.dmon_watch_id, action Action, rootdir charptr, filepath charptr, oldfilepath charptr, user &WatchCallBackWrap) {
 	d := user
 
 	unsafe {
@@ -205,7 +203,7 @@ pub fn watch(path string, watch_cb FnWatchCallback, flags u32, user_data voidptr
 pub fn unwatch(id WatchID) {
 	dbg(@MOD, @FN, 'unwatching "${id}"') // Good for crash debugging
 	mut ctx_ptr := unsafe { vmon.ctx }
-	C.dmon_unwatch(c.WatchID{ id: u32(id) })
+	C.dmon_unwatch(C.dmon_watch_id{u32(id)})
 	if !isnil(ctx_ptr) {
 		wid := int(id) - 1
 		mut cbw := ctx_ptr.cb_wrappers[wid]

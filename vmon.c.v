@@ -22,8 +22,6 @@ pub:
 	id u32
 }
 
-pub type WatchID = C.dmon_watch_id
-
 // void dmon_init(void);
 fn C.dmon_init()
 
