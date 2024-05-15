@@ -3,8 +3,6 @@ module c
 
 // https://github.com/septag/dmon @ 57dc7bf
 
-pub const used_import = 1 // TODO
-
 #flag -I @VROOT/dmon
 #flag darwin -framework CoreServices -framework CoreFoundation
 //#flag darwin -lpthread

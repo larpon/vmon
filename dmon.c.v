@@ -6,7 +6,6 @@ import os
 import sync
 import c
 
-const used_import = c.used_import
 const ctx = &Context(unsafe { nil }) // Sorry - I could find no other way - this is C interop :(
 
 pub enum WatchFlag {
@@ -31,7 +30,7 @@ type FnWatchCallback = fn (watch_id WatchID, action Action, root_path string, fi
 
 struct Context {
 mut:
-	cb_wrappers []&WatchCallBackWrap
+	cb_wrappers map[u32]&WatchCallBackWrap
 	freed       bool
 }
 
@@ -72,8 +71,9 @@ fn done() {
 		dbg(@MOD, @FN, 'freeing resources')
 		C.dmon_deinit()
 		unsafe {
-			for i := 0; i < ctx_ptr.cb_wrappers.len; i++ {
-				free(ctx_ptr.cb_wrappers[i])
+			for _, cbw in ctx_ptr.cb_wrappers {
+				dbg(@MOD, @FN, 'freeing callback wrapper @ ${ptr_str(cbw)}')
+				free(cbw)
 			}
 		}
 		ctx_ptr.cb_wrappers.clear()
@@ -188,12 +188,12 @@ pub fn watch(path string, watch_cb FnWatchCallback, flags u32, user_data voidptr
 		callback: watch_cb
 	}
 
+	wid := C.dmon_watch(path.str, c_watch_callback_wrap, flags, watch_cb_wrap).id
+
 	mut ctx_ptr := unsafe { vmon.ctx }
 	if !isnil(ctx_ptr) {
-		ctx_ptr.cb_wrappers << watch_cb_wrap
+		ctx_ptr.cb_wrappers[u32(wid)] = watch_cb_wrap
 	}
-
-	wid := C.dmon_watch(path.str, c_watch_callback_wrap, flags, watch_cb_wrap).id
 
 	if wid == 0 {
 		return error(@MOD + '.' + @FN +
@@ -206,11 +206,13 @@ pub fn unwatch(id WatchID) {
 	dbg(@MOD, @FN, 'unwatching "${id}"') // Good for crash debugging
 	mut ctx_ptr := unsafe { vmon.ctx }
 	C.dmon_unwatch(c.WatchID{ id: u32(id) })
+	dbg(@MOD, @FN, 'dmon unwatched "${id}"') // Good for crash debugging
 	if !isnil(ctx_ptr) {
-		wid := int(id) - 1
-		mut cbw := ctx_ptr.cb_wrappers[wid]
+		mut cbw := ctx_ptr.cb_wrappers[id] or {
+			panic('${@MOD}.${@FN}: WatchCallBackWrap for "${id}" does not exist')
+		}
 		dbg(@MOD, @FN, 'unwatching id ${id} ("${cbw.path}")')
-		ctx_ptr.cb_wrappers.delete(wid)
+		ctx_ptr.cb_wrappers.delete(id)
 		// Wear a life-belt
 		cbw.mutex.@lock()
 		cbw.user_data = unsafe { nil }
