@@ -188,7 +188,7 @@ pub fn watch(path string, watch_cb FnWatchCallback, flags u32, user_data voidptr
 		callback:  watch_cb
 	}
 
-	wid := C.dmon_watch(path.str, c_watch_callback_wrap, flags, watch_cb_wrap).id
+	wid := C.dmon_watch(charptr(path.str), voidptr(c_watch_callback_wrap), flags, watch_cb_wrap).id
 
 	mut ctx_ptr := unsafe { ctx }
 	if !isnil(ctx_ptr) {
