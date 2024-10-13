@@ -51,7 +51,7 @@ fn init() {
 
 	// TODO Sorry - I have no other choice
 	unsafe {
-		x := &vmon.ctx
+		x := &ctx
 		*x = ctx_oof
 	}
 	C.dmon_init()
@@ -65,7 +65,7 @@ fn init() {
 
 @[manualfree; unsafe]
 fn done() {
-	mut ctx_ptr := unsafe { vmon.ctx }
+	mut ctx_ptr := unsafe { ctx }
 	if !isnil(ctx_ptr) && !ctx_ptr.freed {
 		dbg(@MOD, @FN, '')
 		dbg(@MOD, @FN, 'freeing resources')
@@ -190,7 +190,7 @@ pub fn watch(path string, watch_cb FnWatchCallback, flags u32, user_data voidptr
 
 	wid := C.dmon_watch(path.str, c_watch_callback_wrap, flags, watch_cb_wrap).id
 
-	mut ctx_ptr := unsafe { vmon.ctx }
+	mut ctx_ptr := unsafe { ctx }
 	if !isnil(ctx_ptr) {
 		ctx_ptr.cb_wrappers[u32(wid)] = watch_cb_wrap
 	}
@@ -204,7 +204,7 @@ pub fn watch(path string, watch_cb FnWatchCallback, flags u32, user_data voidptr
 
 pub fn unwatch(id WatchID) {
 	dbg(@MOD, @FN, 'unwatching "${id}"') // Good for crash debugging
-	mut ctx_ptr := unsafe { vmon.ctx }
+	mut ctx_ptr := unsafe { ctx }
 	C.dmon_unwatch(c.WatchID{ id: u32(id) })
 	dbg(@MOD, @FN, 'dmon unwatched "${id}"') // Good for crash debugging
 	if !isnil(ctx_ptr) {
